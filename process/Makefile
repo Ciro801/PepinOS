@@ -3,8 +3,7 @@ BUILD   ?= ../build
 INCLUDES ?= -I../lib -I../kernel -I../arch -I../mm -I../drivers -I../process
 CFLAGS  ?= -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall $(INCLUDES)
 
-# scheduler.o, elf.o, signal.o se añaden en pasos futuros
-OBJS = $(BUILD)/task.o $(BUILD)/task_user.o $(BUILD)/syscall.o
+OBJS = $(BUILD)/task.o $(BUILD)/task_user.o $(BUILD)/syscall.o $(BUILD)/scheduler.o
 
 .PHONY: all clean
 

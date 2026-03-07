@@ -54,10 +54,11 @@ void init_paging(void)
  *   KERNEL_VIRTUAL  → kernel (identity mapped)
  * ============================================================ */
 void create_task_space(u32 task_code_phys, u32 task_stack_phys,
-                       u32 task_code_virt, u32 task_stack_virt)
+                       u32 task_code_virt, u32 task_stack_virt,
+                       u32 pd_addr, u32 pt_addr)
 {
-    u32 *pd = (u32 *) TASK_PD_ADDR;
-    u32 *pt = (u32 *) TASK_PT_ADDR;
+    u32 *pd = (u32 *) pd_addr;
+    u32 *pt = (u32 *) pt_addr;
     u32 i;
 
     /* limpiar page directory y la page table de la tarea */
@@ -76,7 +77,7 @@ void create_task_space(u32 task_code_phys, u32 task_stack_phys,
     pt[code_idx]  = task_code_phys  | PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
     pt[stack_idx] = task_stack_phys | PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
 
-    pd[code_dir] = ((u32) pt) | PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
+    pd[code_dir] = pt_addr | PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
 
     /* ── Kernel accesible via identidad (pd[0..3] del kernel) ──
      * El kernel está en 0x1000-0x2FFFF (físico = virtual con identidad).
@@ -94,12 +95,6 @@ void create_task_space(u32 task_code_phys, u32 task_stack_phys,
     for (i = 0; i < 4; i++)
         pd[kv_dir + i] = ((u32)(kernel_pt + i * 1024))
                          | PAGE_PRESENT | PAGE_WRITE;
-}
-
-/* cambiar a espacio de la tarea */
-void switch_to_task_space(void)
-{
-    asm volatile ("mov %0, %%cr3" : : "r"((u32)TASK_PD_ADDR));
 }
 
 /* volver al espacio del kernel */

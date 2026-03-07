@@ -7,9 +7,13 @@
 #define KERNEL_PD_ADDR   0x00100000    /* 1MB — fuera del kernel */
 #define KERNEL_PT_ADDR   0x00101000    /* justo después */
 
-/* Page Directory y Tables de la TAREA USUARIO */
-#define TASK_PD_ADDR     0x00110000
-#define TASK_PT_ADDR     0x00111000
+/* Page Directory y Tables de la TAREA A */
+#define TASK_A_PD_ADDR   0x00110000
+#define TASK_A_PT_ADDR   0x00111000
+
+/* Page Directory y Tables de la TAREA B */
+#define TASK_B_PD_ADDR   0x00112000
+#define TASK_B_PT_ADDR   0x00113000
 
 /* Flags */
 #define PAGE_PRESENT     0x1
@@ -21,8 +25,8 @@
 
 void init_paging(void);
 void create_task_space(u32 task_code_phys, u32 task_stack_phys,
-                       u32 task_code_virt, u32 task_stack_virt);
-void switch_to_task_space(void);
+                       u32 task_code_virt, u32 task_stack_virt,
+                       u32 pd_addr, u32 pt_addr);
 void switch_to_kernel_space(void);
 
 #endif

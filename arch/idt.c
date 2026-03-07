@@ -78,8 +78,6 @@ void idt_handler_div0(void)
     while(1);
 }
 
-void idt_handler_irq0(void) { /* timer — sin acción por ahora */ }
-
 void init_idt(void)
 {
     int i;
@@ -95,8 +93,8 @@ void init_idt(void)
     outb(PIC_SLAVE_DATA,  0x02);
     outb(PIC_SLAVE_DATA,  0x01);
 
-    /* Solo IRQ1 (teclado) habilitado */
-    outb(PIC_MASTER_DATA, 0xFD);    /* 11111101 */
+    /* IRQ0 (timer) e IRQ1 (teclado) habilitados */
+    outb(PIC_MASTER_DATA, 0xFC);    /* 11111100 */
     outb(PIC_SLAVE_DATA,  0xFF);
 
     /* Llenar IDT con handler por defecto */
@@ -137,8 +135,8 @@ void init_idt(void)
     init_idt_desc(0x08, (u32)_idt_irq6,      0x8E00, &kidt[38]);
     init_idt_desc(0x08, (u32)_idt_irq7,      0x8E00, &kidt[39]);
 
-    /* Syscall — Trap Gate DPL=3 */
-    init_idt_desc(0x08, (u32)_idt_syscall, 0xEF00, &kidt[0x30]);
+    /* Syscall — Interrupt Gate DPL=3 (borra IF al entrar, evita reentrada) */
+    init_idt_desc(0x08, (u32)_idt_syscall, 0xEE00, &kidt[0x30]);
 
     kattr = 0x0C;
     print("\n[DEBUG] Cargando IDT en 0x200...\n");

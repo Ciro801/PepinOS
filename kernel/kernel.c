@@ -30,7 +30,7 @@ int kmain(void)
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print(" PepinOS Paso 12 - Mem Separada\n");
+    print("  PepinOS Paso 13 - Scheduler  \n");
     kattr = 0x0F;
     print("================================\n\n");
 
@@ -47,8 +47,8 @@ int kmain(void)
     init_paging();
     print("  [OK] Paginacion kernel activa\n\n");
 
-    print("Creando espacio usuario:\n");
-    launch_task();
+    print("Iniciando multitarea:\n");
+    launch_tasks();
 
     while(1);
     return 0;

@@ -28,6 +28,7 @@ OBJS = \
 	$(BUILD)/paging.o    \
 	$(BUILD)/task.o      \
 	$(BUILD)/task_user.o \
+	$(BUILD)/scheduler.o \
 	$(BUILD)/screen.o
 
 .PHONY: all run clean debug

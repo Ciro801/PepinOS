@@ -5,7 +5,7 @@ EXTERN idt_handler_div0
 EXTERN idt_handler_pagefault
 EXTERN idt_handler_gpf
 EXTERN idt_handler_numbered
-EXTERN idt_handler_irq0
+EXTERN do_switch
 EXTERN keyboard_handler
 EXTERN syscall_handler
 
@@ -117,9 +117,11 @@ _idt_gpf:
 
 _idt_irq0:
     pusha
-    call idt_handler_irq0
-    mov al, 0x20
-    out 0x20, al
+    push esp              ; pasar puntero al frame pusha
+    call do_switch        ; do_switch(ctx) guarda/restaura contexto
+    add  esp, 4
+    mov  al, 0x20
+    out  0x20, al         ; EOI al PIC
     popa
     iret
 

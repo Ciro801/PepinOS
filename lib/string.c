@@ -1,0 +1,1 @@
+/* string — paso futuro */

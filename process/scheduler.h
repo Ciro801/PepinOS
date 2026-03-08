@@ -22,15 +22,16 @@
  *   regs[12] = SS    /
  */
 typedef struct {
-    u32 regs[13];   /* pusha(8) + iret(5) */
-    u32 cr3;        /* page directory fisico */
+    u32 regs[13];    /* pusha(8) + iret(5) */
+    u32 cr3;         /* page directory fisico */
+    u32 kstack_top;  /* tope de la pila kernel (para TSS.esp0) */
     int active;
 } task_t;
 
 extern int ntasks;
 
 void sched_add_task(u32 eip, u32 cs, u32 eflags,
-                    u32 user_esp, u32 ss, u32 cr3);
+                    u32 user_esp, u32 ss, u32 cr3, u32 kstack_top);
 void do_switch(u32 *ctx);
 
 #endif

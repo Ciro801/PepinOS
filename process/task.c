@@ -36,17 +36,17 @@ void launch_tasks(void)
                       TASK_B_PD_ADDR,   TASK_B_PT_ADDR);
     print("  [OK] Espacio de memoria B creado\n");
 
-    /* ── TSS ── */
-    init_tss(0x20000);
+    /* ── TSS: pila kernel de tarea A (la primera en ejecutarse) ── */
+    init_tss(TASK_A_KSTACK_TOP);
     asm("movw $0x38, %ax \n"
         "ltr  %ax        \n");
-    print("  [OK] TSS listo\n");
+    print("  [OK] TSS listo (pilas kernel separadas)\n");
 
     /* ── Registrar tareas en el scheduler ── */
     sched_add_task(TASK_CODE_VIRT, 0x23, 0x202,
-                   TASK_STACK_VIRT + 0xFF0, 0x33, TASK_A_PD_ADDR);
+                   TASK_STACK_VIRT + 0xFF0, 0x33, TASK_A_PD_ADDR, TASK_A_KSTACK_TOP);
     sched_add_task(TASK_CODE_VIRT, 0x23, 0x202,
-                   TASK_STACK_VIRT + 0xFF0, 0x33, TASK_B_PD_ADDR);
+                   TASK_STACK_VIRT + 0xFF0, 0x33, TASK_B_PD_ADDR, TASK_B_KSTACK_TOP);
     print("  [OK] Scheduler: 2 tareas registradas\n");
 
     print("\nMultitarea activa. Iniciando tarea A...\n\n");

@@ -30,7 +30,7 @@ int kmain(void)
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print("  PepinOS Paso 13 - Scheduler  \n");
+    print("  PepinOS Paso 14 - Pila/Tarea \n");
     kattr = 0x0F;
     print("================================\n\n");
 

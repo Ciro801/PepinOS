@@ -135,8 +135,8 @@ void init_idt(void)
     init_idt_desc(0x08, (u32)_idt_irq6,      0x8E00, &kidt[38]);
     init_idt_desc(0x08, (u32)_idt_irq7,      0x8E00, &kidt[39]);
 
-    /* Syscall — Interrupt Gate DPL=3 (borra IF al entrar, evita reentrada) */
-    init_idt_desc(0x08, (u32)_idt_syscall, 0xEE00, &kidt[0x30]);
+    /* Syscall — Trap Gate DPL=3 (mantiene IF=1, timer puede interrumpir) */
+    init_idt_desc(0x08, (u32)_idt_syscall, 0xEF00, &kidt[0x30]);
 
     kattr = 0x0C;
     print("\n[DEBUG] Cargando IDT en 0x200...\n");

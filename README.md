@@ -37,10 +37,10 @@ Basado exactamente en el índice del tutorial de michelizza, dividido en **5 fas
 ---
 
 ### 🔄 FASE 4 — Multitarea y sistema de archivos
-| Paso | Capítulo | Qué construyes |
-|------|----------|----------------|
+| Paso | Capítulo | Qué construyes | Estado |
+|------|----------|----------------|--------|
 | 13 | XIV | **Scheduler simple** (round-robin por timer) | ✅ Completado |
-| 14 | XV | Scheduler con syscalls **preemptibles**, pila kernel por tarea |
+| 14 | XV | Scheduler con syscalls **preemptibles**, pila kernel por tarea | ✅ Completado |
 | 15 | XVI | Boot con **GRUB** (estándar multiboot) |
 | 16 | XVII | Gestión completa de **memoria física y virtual** |
 | 17 | XVIII | Lectura/escritura en **disco IDE** (PIO) |

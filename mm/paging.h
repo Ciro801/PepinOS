@@ -3,17 +3,28 @@
 
 #include "types.h"
 
+/*
+ * Mapa de memoria (Paso 15 — GRUB carga el kernel en 0x100000):
+ *   0x100000 - 0x11FFFF : Kernel ELF (128KB reservados)
+ *   0x120000            : Tope de la pila del kernel inicial
+ *   0x200000            : Page Directory del kernel
+ *   0x201000 - 0x204FFF : Page Tables del kernel (4 × 4KB = 16KB)
+ *   0x205000 - 0x208FFF : Page Directories/Tables de las tareas
+ *   0x300000+           : Código y pilas de las tareas de usuario
+ *   0x320000+           : Pilas kernel por tarea (ring 0)
+ */
+
 /* Page Directory y Tables del KERNEL */
-#define KERNEL_PD_ADDR   0x00100000    /* 1MB — fuera del kernel */
-#define KERNEL_PT_ADDR   0x00101000    /* justo después */
+#define KERNEL_PD_ADDR   0x00200000
+#define KERNEL_PT_ADDR   0x00201000    /* 4 tablas × 4KB = 16KB (hasta 0x204FFF) */
 
 /* Page Directory y Tables de la TAREA A */
-#define TASK_A_PD_ADDR   0x00110000
-#define TASK_A_PT_ADDR   0x00111000
+#define TASK_A_PD_ADDR   0x00205000
+#define TASK_A_PT_ADDR   0x00206000
 
 /* Page Directory y Tables de la TAREA B */
-#define TASK_B_PD_ADDR   0x00112000
-#define TASK_B_PT_ADDR   0x00113000
+#define TASK_B_PD_ADDR   0x00207000
+#define TASK_B_PT_ADDR   0x00208000
 
 /* Flags */
 #define PAGE_PRESENT     0x1

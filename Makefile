@@ -16,8 +16,10 @@ CFLAGS = -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall $(INC
 
 export CC NASM CFLAGS BUILD
 
-# Orden de enlace: kernel primero para que _start quede en 0x1000
+# multiboot.o va primero: la sección .multiboot debe quedar en los
+# primeros 8KB del binario para que GRUB encuentre la cabecera.
 OBJS = \
+	$(BUILD)/multiboot.o \
 	$(BUILD)/kernel.o    \
 	$(BUILD)/gdt.o       \
 	$(BUILD)/tss.o       \
@@ -33,16 +35,12 @@ OBJS = \
 
 .PHONY: all run clean debug
 
-all: $(BUILD)/floppy.img
+all: $(BUILD)/kernel.elf
 
 # ── Compilación: llamar a cada subcarpeta en orden ─────────────────────────
-$(BUILD)/floppy.img: _compile $(BUILD)/kernel
-	cat $(BUILD)/bootsect $(BUILD)/kernel /dev/zero | \
-	dd of=$(BUILD)/floppy.img bs=512 count=2880 2>/dev/null
-
-$(BUILD)/kernel: $(OBJS)
-	$(LD) -m elf_i386 --oformat binary -Ttext 0x1000 \
-	      $(OBJS) -o $(BUILD)/kernel
+$(BUILD)/kernel.elf: _compile $(OBJS)
+	$(LD) -m elf_i386 -T arch/linker.ld \
+	      $(OBJS) -o $(BUILD)/kernel.elf
 
 .PHONY: _compile
 _compile:
@@ -58,19 +56,19 @@ _compile:
 	$(MAKE) -C user    BUILD=$(CURDIR)/$(BUILD)
 
 # ── Targets ────────────────────────────────────────────────────────────────
+# QEMU implementa Multiboot nativamente con -kernel: no se necesita GRUB real
 run: all
 	qemu-system-i386 \
-	    -drive file=$(BUILD)/floppy.img,if=floppy,format=raw \
+	    -kernel $(BUILD)/kernel.elf \
 	    -k es
 
 # -d int muestra todas las interrupciones en la consola de QEMU
 debug: all
 	qemu-system-i386 \
-	    -drive file=$(BUILD)/floppy.img,if=floppy,format=raw \
+	    -kernel $(BUILD)/kernel.elf \
 	    -k es -d int 2>&1 | head -200
 
 clean:
 	rm -f $(BUILD)/*.o \
-	      $(BUILD)/bootsect \
-	      $(BUILD)/kernel \
-	      $(BUILD)/floppy.img
+	      $(BUILD)/multiboot.o \
+	      $(BUILD)/kernel.elf

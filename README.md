@@ -41,7 +41,7 @@ Basado exactamente en el índice del tutorial de michelizza, dividido en **5 fas
 |------|----------|----------------|--------|
 | 13 | XIV | **Scheduler simple** (round-robin por timer) | ✅ Completado |
 | 14 | XV | Scheduler con syscalls **preemptibles**, pila kernel por tarea | ✅ Completado |
-| 15 | XVI | Boot con **GRUB** (estándar multiboot) |
+| 15 | XVI | Boot con **GRUB** (estándar multiboot) | ✅ Completado |
 | 16 | XVII | Gestión completa de **memoria física y virtual** |
 | 17 | XVIII | Lectura/escritura en **disco IDE** (PIO) |
 | 18 | XIX | Sistema de archivos **Ext2FS** |

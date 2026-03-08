@@ -20,7 +20,7 @@ void _start(void)
 
     asm("  movw $0x18, %ax  \n"
         "  movw %ax,  %ss   \n"
-        "  movl $0x20000, %esp");
+        "  movl $0x120000, %esp");   /* pila kernel encima del binario */
 
     kmain();
 }
@@ -30,7 +30,7 @@ int kmain(void)
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print("  PepinOS Paso 14 - Pila/Tarea \n");
+    print("  PepinOS Paso 15 - GRUB/Multiboot\n");
     kattr = 0x0F;
     print("================================\n\n");
 

@@ -1,1 +1,185 @@
-/* ext2 — paso futuro */
+#include "ext2.h"
+#include "ide.h"
+#include "screen.h"
+#include "types.h"
+
+/*
+ * Estado interno del driver.
+ * Todos los buffers son globales (no en la pila) para evitar desbordamiento.
+ */
+static u32         block_size;          /* bytes por bloque (tipicamente 1024) */
+static u32         inode_size;          /* bytes por inodo  (tipicamente 128)  */
+static u32         inodes_per_group;
+static ext2_bgd_t  bgd;                 /* primer Block Group Descriptor */
+
+static u8 blk_a[4096];  /* buffer de bloques — uso general  */
+static u8 blk_b[4096];  /* buffer de bloques — directorio   */
+
+/* ── Lectura de bloques ─────────────────────────────────────────────────── */
+
+static void ext2_read_block(u32 block, u8 *buf)
+{
+    u32 sects = block_size / 512;
+    u32 lba   = block * sects;
+    u32 i;
+    for (i = 0; i < sects; i++)
+        ide_read_sector(lba + i, buf + i * 512);
+}
+
+/* ── Inicializacion ─────────────────────────────────────────────────────── */
+
+/*
+ * ext2_init — Lee el superblock (sector 2, byte 1024 del disco),
+ * valida el numero magico 0xEF53 y carga el primer Block Group Descriptor.
+ *
+ * Campos del superblock accedidos por offset (evita problemas de padding):
+ *   +20  s_first_data_block  (u32)
+ *   +24  s_log_block_size    (u32)  → block_size = 1024 << valor
+ *   +40  s_inodes_per_group  (u32)
+ *   +56  s_magic             (u16)
+ *   +76  s_rev_level         (u32)
+ *   +88  s_inode_size        (u16)  solo valido si rev_level >= 1
+ */
+void ext2_init(void)
+{
+    u8 sb[512];         /* un sector es suficiente para los campos que leemos */
+    u32 log_bsz, rev, first_data;
+    u16 magic, sb_inode_sz;
+    u32 bgdt_block;
+    u32 i;
+    u8 *bgd_raw;
+
+    ide_read_sector(2, sb);   /* superblock empieza en el byte 1024 = sector 2 */
+
+    magic      = *(u16*)(sb + 56);
+    log_bsz    = *(u32*)(sb + 24);
+    rev        = *(u32*)(sb + 76);
+    first_data = *(u32*)(sb + 20);
+    sb_inode_sz= *(u16*)(sb + 88);
+    inodes_per_group = *(u32*)(sb + 40);
+
+    if (magic != EXT2_MAGIC) {
+        print("  [!!] Ext2: magic invalido — no es ext2\n");
+        return;
+    }
+
+    block_size = 1024u << log_bsz;
+    inode_size = (rev >= 1 && sb_inode_sz >= 128) ? sb_inode_sz : 128;
+
+    /* El BGDT esta en el bloque siguiente al superblock */
+    bgdt_block = first_data + 1;
+    ext2_read_block(bgdt_block, blk_a);
+
+    bgd_raw = (u8 *)&bgd;
+    for (i = 0; i < sizeof(ext2_bgd_t); i++)
+        bgd_raw[i] = blk_a[i];
+
+    print("  [OK] Ext2: filesystem montado\n");
+}
+
+/* ── Lectura de inodos ──────────────────────────────────────────────────── */
+
+static void ext2_read_inode(u32 inum, ext2_inode_t *inode)
+{
+    u32 idx    = inum - 1;
+    u32 ipb    = block_size / inode_size;        /* inodos por bloque */
+    u32 block  = bgd.bg_inode_table + idx / ipb;
+    u32 offset = (idx % ipb) * inode_size;
+    u32 i;
+    u8 *raw;
+
+    ext2_read_block(block, blk_a);
+
+    raw = (u8 *)inode;
+    for (i = 0; i < sizeof(ext2_inode_t); i++)
+        raw[i] = blk_a[offset + i];
+}
+
+/* ── Directorio: listar ─────────────────────────────────────────────────── */
+
+void ext2_ls(u32 dir_ino)
+{
+    ext2_inode_t inode;
+    u32 off;
+
+    ext2_read_inode(dir_ino, &inode);
+    ext2_read_block(inode.i_block[0], blk_b);
+
+    off = 0;
+    while (off < inode.i_size && off < block_size) {
+        ext2_dirent_t *de = (ext2_dirent_t *)(blk_b + off);
+        if (de->rec_len == 0) break;
+        if (de->inode != 0) {
+            char name[256];
+            u8 j;
+            u8 *name_ptr = (u8 *)de + sizeof(ext2_dirent_t);
+            for (j = 0; j < de->name_len; j++)
+                name[j] = (char)name_ptr[j];
+            name[de->name_len] = '\0';
+            print("    ");
+            print(name);
+            print("\n");
+        }
+        off += de->rec_len;
+    }
+}
+
+/* ── Directorio: buscar ─────────────────────────────────────────────────── */
+
+u32 ext2_find(u32 dir_ino, const char *name)
+{
+    ext2_inode_t inode;
+    u32 off;
+
+    ext2_read_inode(dir_ino, &inode);
+    ext2_read_block(inode.i_block[0], blk_b);
+
+    off = 0;
+    while (off < inode.i_size && off < block_size) {
+        ext2_dirent_t *de = (ext2_dirent_t *)(blk_b + off);
+        if (de->rec_len == 0) break;
+        if (de->inode != 0) {
+            u8 *name_ptr = (u8 *)de + sizeof(ext2_dirent_t);
+            const char *p = name;
+            u8 j;
+            int match = 1;
+            for (j = 0; j < de->name_len; j++) {
+                if (*p == '\0' || *p != (char)name_ptr[j]) {
+                    match = 0;
+                    break;
+                }
+                p++;
+            }
+            if (match && *p == '\0')
+                return de->inode;
+        }
+        off += de->rec_len;
+    }
+    return 0;
+}
+
+/* ── Lectura de archivos ────────────────────────────────────────────────── */
+
+u32 ext2_read_file(u32 inum, u8 *buf, u32 max_size)
+{
+    ext2_inode_t inode;
+    u32 size, copied, blk, bytes, j;
+
+    ext2_read_inode(inum, &inode);
+
+    size   = (inode.i_size < max_size) ? inode.i_size : max_size;
+    copied = 0;
+
+    for (blk = 0; blk < 12 && copied < size; blk++) {
+        if (inode.i_block[blk] == 0) break;
+        ext2_read_block(inode.i_block[blk], blk_a);
+        bytes = block_size;
+        if (copied + bytes > size)
+            bytes = size - copied;
+        for (j = 0; j < bytes; j++)
+            buf[copied + j] = blk_a[j];
+        copied += bytes;
+    }
+
+    return copied;
+}

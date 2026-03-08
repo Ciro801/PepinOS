@@ -3,8 +3,7 @@ BUILD   ?= ../build
 INCLUDES ?= -I../lib -I../kernel -I../arch -I../mm -I../drivers -I../process -I../fs
 CFLAGS  ?= -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall $(INCLUDES)
 
-# Sin objetos por ahora — ext2 y vfs se implementan en pasos futuros
-OBJS =
+OBJS = $(BUILD)/ext2.o
 
 .PHONY: all clean
 

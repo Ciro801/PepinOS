@@ -6,6 +6,7 @@
 #include "pmm.h"
 #include "vmm.h"
 #include "ide.h"
+#include "ext2.h"
 #include "task.h"
 
 extern char kY;
@@ -75,7 +76,7 @@ int kmain(void)
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print("  PepinOS Paso 17 - Driver IDE PIO\n");
+    print("  PepinOS Paso 18 - Ext2 Filesystem\n");
     kattr = 0x0F;
     print("================================\n\n");
 
@@ -99,6 +100,20 @@ int kmain(void)
     print("  [OK] VMM: listo\n");
 
     test_ide();
+
+    ext2_init();
+    print("  [Ext2] Directorio raiz:\n");
+    ext2_ls(EXT2_ROOT_INODE);
+    {
+        static u8 content[128];
+        u32 ino = ext2_find(EXT2_ROOT_INODE, "hola.txt");
+        if (ino) {
+            u32 bytes = ext2_read_file(ino, content, 127);
+            content[bytes] = '\0';
+            print("  [Ext2] hola.txt: ");
+            print((char *)content);
+        }
+    }
     print("\n");
 
     print("Iniciando multitarea:\n");

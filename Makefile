@@ -10,7 +10,8 @@ INCLUDES = -I$(CURDIR)/lib    \
            -I$(CURDIR)/arch   \
            -I$(CURDIR)/mm     \
            -I$(CURDIR)/drivers \
-           -I$(CURDIR)/process
+           -I$(CURDIR)/process \
+           -I$(CURDIR)/fs
 
 CFLAGS = -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall \
          -mno-sse -mno-mmx \
@@ -33,6 +34,7 @@ OBJS = \
 	$(BUILD)/paging.o    \
 	$(BUILD)/pmm.o       \
 	$(BUILD)/vmm.o       \
+	$(BUILD)/ext2.o      \
 	$(BUILD)/task.o      \
 	$(BUILD)/task_user.o \
 	$(BUILD)/scheduler.o \
@@ -61,9 +63,14 @@ _compile:
 	$(MAKE) -C user    BUILD=$(CURDIR)/$(BUILD)
 
 # ── Targets ────────────────────────────────────────────────────────────────
-# Crear imagen de disco vacia de 1MB si no existe
+# Crear imagen de disco ext2 de 2MB con un archivo de prueba
 $(BUILD)/disk.img:
-	dd if=/dev/zero of=$(BUILD)/disk.img bs=512 count=2048 2>/dev/null
+	dd if=/dev/zero of=$(BUILD)/disk.img bs=1k count=2048 2>/dev/null
+	mkfs.ext2 -b 1024 $(BUILD)/disk.img 2>/dev/null
+	@printf "Hola desde PepinOS Ext2!\n" > /tmp/_pepinos_test.txt
+	@printf "write /tmp/_pepinos_test.txt hola.txt\n" | \
+	    debugfs -w $(BUILD)/disk.img 2>/dev/null || true
+	@rm -f /tmp/_pepinos_test.txt
 
 # QEMU implementa Multiboot nativamente con -kernel: no se necesita GRUB real
 run: all $(BUILD)/disk.img
@@ -82,4 +89,5 @@ debug: all $(BUILD)/disk.img
 clean:
 	rm -f $(BUILD)/*.o \
 	      $(BUILD)/multiboot.o \
-	      $(BUILD)/kernel.elf
+	      $(BUILD)/kernel.elf \
+	      $(BUILD)/disk.img

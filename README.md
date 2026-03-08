@@ -44,7 +44,7 @@ Basado exactamente en el índice del tutorial de michelizza, dividido en **5 fas
 | 15 | XVI | Boot con **GRUB** (estándar multiboot) | ✅ Completado |
 | 16 | XVII | Gestión completa de **memoria física y virtual** | ✅ Completado |
 | 17 | XVIII | Lectura/escritura en **disco IDE** (PIO) | ✅ Completado |
-| 18 | XIX | Sistema de archivos **Ext2FS** |
+| 18 | XIX | Sistema de archivos **Ext2FS** | ✅ Completado |
 
 ---
 

@@ -28,6 +28,8 @@ OBJS = \
 	$(BUILD)/keyboard.o  \
 	$(BUILD)/syscall.o   \
 	$(BUILD)/paging.o    \
+	$(BUILD)/pmm.o       \
+	$(BUILD)/vmm.o       \
 	$(BUILD)/task.o      \
 	$(BUILD)/task_user.o \
 	$(BUILD)/scheduler.o \

@@ -3,6 +3,8 @@
 #include "idt.h"
 #include "keyboard.h"
 #include "paging.h"
+#include "pmm.h"
+#include "vmm.h"
 #include "task.h"
 
 extern char kY;
@@ -30,7 +32,7 @@ int kmain(void)
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print("  PepinOS Paso 15 - GRUB/Multiboot\n");
+    print("  PepinOS Paso 16 - Gestion de Memoria\n");
     kattr = 0x0F;
     print("================================\n\n");
 
@@ -45,7 +47,13 @@ int kmain(void)
     print("  [OK] Interrupciones activas\n");
 
     init_paging();
-    print("  [OK] Paginacion kernel activa\n\n");
+    print("  [OK] Paginacion kernel activa\n");
+
+    pmm_init(32 * 1024 * 1024);    /* 32MB de RAM */
+    print("  [OK] PMM: memoria fisica lista\n");
+
+    vmm_init();
+    print("  [OK] VMM: listo\n\n");
 
     print("Iniciando multitarea:\n");
     launch_tasks();

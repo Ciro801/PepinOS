@@ -12,7 +12,9 @@ INCLUDES = -I$(CURDIR)/lib    \
            -I$(CURDIR)/drivers \
            -I$(CURDIR)/process
 
-CFLAGS = -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall $(INCLUDES)
+CFLAGS = -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall \
+         -mno-sse -mno-mmx \
+         $(INCLUDES)
 
 export CC NASM CFLAGS BUILD
 
@@ -26,6 +28,7 @@ OBJS = \
 	$(BUILD)/idt.o       \
 	$(BUILD)/idt_asm.o   \
 	$(BUILD)/keyboard.o  \
+	$(BUILD)/ide.o       \
 	$(BUILD)/syscall.o   \
 	$(BUILD)/paging.o    \
 	$(BUILD)/pmm.o       \
@@ -58,16 +61,22 @@ _compile:
 	$(MAKE) -C user    BUILD=$(CURDIR)/$(BUILD)
 
 # ── Targets ────────────────────────────────────────────────────────────────
+# Crear imagen de disco vacia de 1MB si no existe
+$(BUILD)/disk.img:
+	dd if=/dev/zero of=$(BUILD)/disk.img bs=512 count=2048 2>/dev/null
+
 # QEMU implementa Multiboot nativamente con -kernel: no se necesita GRUB real
-run: all
+run: all $(BUILD)/disk.img
 	qemu-system-i386 \
 	    -kernel $(BUILD)/kernel.elf \
+	    -drive file=$(BUILD)/disk.img,format=raw,if=ide \
 	    -k es
 
 # -d int muestra todas las interrupciones en la consola de QEMU
-debug: all
+debug: all $(BUILD)/disk.img
 	qemu-system-i386 \
 	    -kernel $(BUILD)/kernel.elf \
+	    -drive file=$(BUILD)/disk.img,format=raw,if=ide \
 	    -k es -d int 2>&1 | head -200
 
 clean:

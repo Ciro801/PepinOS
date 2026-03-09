@@ -169,6 +169,54 @@ u32 ext2_find(u32 dir_ino, const char *name)
 
 /* ── Lectura de archivos ────────────────────────────────────────────────── */
 
+/*
+ * ext2_inode_size — devuelve el tamaño en bytes del inodo 'inum'.
+ * Usado por el VFS para rellenar fs_node_t.length sin leer el archivo entero.
+ */
+u32 ext2_inode_size(u32 inum)
+{
+    ext2_inode_t inode;
+    ext2_read_inode(inum, &inode);
+    return inode.i_size;
+}
+
+/*
+ * ext2_pread — lectura posicionada: lee 'size' bytes desde el byte 'offset'
+ * del archivo con inodo 'inum'. Maneja bloques sparse.
+ * Usado por el VFS (vfs_read) para implementar sys_read con offset corriente.
+ */
+u32 ext2_pread(u32 inum, u8 *buf, u32 offset, u32 size)
+{
+    ext2_inode_t inode;
+    u32 file_size, blk, copied, j, blk_off;
+
+    ext2_read_inode(inum, &inode);
+    file_size = inode.i_size;
+
+    if (offset >= file_size) return 0;
+    if (offset + size > file_size) size = file_size - offset;
+
+    copied  = 0;
+    blk     = offset / block_size;
+    blk_off = offset % block_size;   /* byte de inicio dentro del primer bloque */
+
+    while (copied < size && blk < 12) {
+        if (inode.i_block[blk] == 0) {
+            /* bloque sparse: rellenar con ceros */
+            for (j = blk_off; j < block_size && copied < size; j++)
+                buf[copied++] = 0;
+        } else {
+            ext2_read_block(inode.i_block[blk], blk_a);
+            for (j = blk_off; j < block_size && copied < size; j++)
+                buf[copied++] = blk_a[j];
+        }
+        blk++;
+        blk_off = 0;   /* los bloques siguientes empiezan desde el byte 0 */
+    }
+
+    return copied;
+}
+
 u32 ext2_read_file(u32 inum, u8 *buf, u32 max_size)
 {
     ext2_inode_t inode;

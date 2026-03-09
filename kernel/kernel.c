@@ -7,6 +7,7 @@
 #include "vmm.h"
 #include "ide.h"
 #include "ext2.h"
+#include "vfs.h"
 #include "elf.h"
 #include "task.h"
 
@@ -97,6 +98,8 @@ int kmain(void)
     part_lba = mbr_find_partition();
     ext2_set_partition(part_lba);
     ext2_init();
+    vfs_init();
+    print("  [OK] VFS: listo\n");
 
     print("  [Ext2] Directorio raiz:\n");
     ext2_ls(EXT2_ROOT_INODE);

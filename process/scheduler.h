@@ -2,6 +2,7 @@
 #define _SCHEDULER_H_
 
 #include "types.h"
+#include "vfs.h"    /* fd_t, MAX_FD */
 
 #define MAX_TASKS 8
 
@@ -22,16 +23,18 @@
  *   regs[12] = SS    /
  */
 typedef struct {
-    u32 regs[13];    /* pusha(8) + iret(5) */
-    u32 cr3;         /* page directory fisico */
-    u32 kstack_top;  /* tope de la pila kernel (para TSS.esp0) */
-    int active;
+    u32   regs[13];         /* pusha(8) + iret(5)                    */
+    u32   cr3;              /* page directory fisico                  */
+    u32   kstack_top;       /* tope de la pila kernel (para TSS.esp0) */
+    int   active;
+    fd_t  files[MAX_FD];    /* tabla de descriptores de archivo        */
 } task_t;
 
 extern int ntasks;
 
-void sched_add_task(u32 eip, u32 cs, u32 eflags,
-                    u32 user_esp, u32 ss, u32 cr3, u32 kstack_top);
-void do_switch(u32 *ctx);
+void    sched_add_task(u32 eip, u32 cs, u32 eflags,
+                       u32 user_esp, u32 ss, u32 cr3, u32 kstack_top);
+void    do_switch(u32 *ctx);
+task_t *sched_current_task(void);
 
 #endif

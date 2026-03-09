@@ -66,6 +66,8 @@ void ext2_set_partition(u32 lba_start);
 void ext2_init(void);
 void ext2_ls(u32 dir_ino);
 u32  ext2_find(u32 dir_ino, const char *name);
+u32  ext2_inode_size(u32 inum);
+u32  ext2_pread(u32 inum, u8 *buf, u32 offset, u32 size);
 u32  ext2_read_file(u32 inum, u8 *buf, u32 max_size);
 
 #endif

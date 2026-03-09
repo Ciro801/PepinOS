@@ -36,6 +36,7 @@ OBJS = \
 	$(BUILD)/vmm.o       \
 	$(BUILD)/ext2.o      \
 	$(BUILD)/elf.o       \
+	$(BUILD)/vfs.o       \
 	$(BUILD)/task.o      \
 	$(BUILD)/task_user.o \
 	$(BUILD)/scheduler.o \

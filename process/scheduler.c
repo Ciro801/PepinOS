@@ -6,6 +6,11 @@ static task_t tasks[MAX_TASKS];
 int ntasks = 0;
 static int current = 0;
 
+task_t *sched_current_task(void)
+{
+    return &tasks[current];
+}
+
 void sched_add_task(u32 eip, u32 cs, u32 eflags,
                     u32 user_esp, u32 ss, u32 cr3, u32 kstack_top)
 {
@@ -15,14 +20,22 @@ void sched_add_task(u32 eip, u32 cs, u32 eflags,
     for (i = 0; i < 13; i++)
         t->regs[i] = 0;
 
-    t->regs[8]   = eip;
-    t->regs[9]   = cs;
-    t->regs[10]  = eflags;
-    t->regs[11]  = user_esp;
-    t->regs[12]  = ss;
-    t->cr3       = cr3;
+    t->regs[8]    = eip;
+    t->regs[9]    = cs;
+    t->regs[10]   = eflags;
+    t->regs[11]   = user_esp;
+    t->regs[12]   = ss;
+    t->cr3        = cr3;
     t->kstack_top = kstack_top;
-    t->active    = 1;
+    t->active     = 1;
+
+    /* Inicializar la tabla de descriptores vacía */
+    for (i = 0; i < MAX_FD; i++) {
+        t->files[i].node   = 0;
+        t->files[i].offset = 0;
+        t->files[i].used   = 0;
+    }
+
     ntasks++;
 }
 

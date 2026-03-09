@@ -51,10 +51,10 @@ Basado exactamente en el índice del tutorial de michelizza, dividido en **5 fas
 ### 🖥️ FASE 5 — Sistema completo
 | Paso | Capítulo | Qué construyes | Estado |
 |------|----------|----------------|--------|
-| 19 | Cargar y ejecutar binarios **ELF** desde el filesystem | ✅ Completado |
+| 19 | XX | Cargar y ejecutar binarios **ELF** desde el filesystem | ✅ Completado |
 | 20 | XXI | Boot con GRUB en disco IDE particionado | ✅ Completado |
 | 21 | XXII | Estructuras para gestión de **archivos** | ✅ Completado |
-| 22 | XXIII | Listas enlazadas genéricas (como Linux/FreeBSD) |
+| 22 | XXIII | Listas enlazadas genéricas (como Linux/FreeBSD) | ✅ Completado |
 | 23 | XXIV | Primer **shell** interactivo |
 | 24 | XXV | **Señales POSIX** (`kill`, `sigaction`, `sigreturn`) |
 

@@ -33,14 +33,22 @@ static void print_hex(u32 val)
     }
 }
 
-void idt_handler_pagefault(void)
+void idt_handler_pagefault(u32 error, u32 eip)
 {
-    u32 faulting_addr;
+    u32 faulting_addr, cr3;
     asm volatile ("mov %%cr2, %0" : "=r"(faulting_addr));
+    asm volatile ("mov %%cr3, %0" : "=r"(cr3));
 
     kattr = 0x0C;
-    print("\n[!] PAGE FAULT en direccion: 0x");
+    print("\n[!] PAGE FAULT addr=0x");
     print_hex(faulting_addr);
+    print(" eip=0x");
+    print_hex(eip);
+    print(" err=0x");
+    print_hex(error);
+    print(error & 4 ? " [USER]" : " [KERN]");
+    print("\n    cr3=0x");
+    print_hex(cr3);
     putcar('\n');
     while (1);
 }

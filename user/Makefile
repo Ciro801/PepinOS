@@ -1,17 +1,19 @@
 CC      ?= gcc
+LD      ?= ld
 BUILD   ?= ../build
-INCLUDES ?= -I../lib -I../kernel -I../arch -I../mm -I../drivers -I../process -I../fs -I../user
-CFLAGS  ?= -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall $(INCLUDES)
 
-# shell.o se añade en pasos futuros
-OBJS =
+CFLAGS_USER = -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic \
+              -Wall -mno-sse -mno-mmx
 
 .PHONY: all clean
 
-all: $(OBJS)
+all: $(BUILD)/hello.elf
 
-$(BUILD)/%.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+$(BUILD)/hello.o: hello.c
+	$(CC) $(CFLAGS_USER) -c -o $@ $<
+
+$(BUILD)/hello.elf: $(BUILD)/hello.o link_user.ld
+	$(LD) -m elf_i386 -T link_user.ld $(BUILD)/hello.o -o $@
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(BUILD)/hello.o $(BUILD)/hello.elf

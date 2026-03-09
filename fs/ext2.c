@@ -15,6 +15,16 @@ static ext2_bgd_t  bgd;                 /* primer Block Group Descriptor */
 static u8 blk_a[4096];  /* buffer de bloques — uso general  */
 static u8 blk_b[4096];  /* buffer de bloques — directorio   */
 
+/* ── Helper diagnóstico ─────────────────────────────────────────────────── */
+
+static void phex32(u32 v) {
+    int j;
+    for (j = 28; j >= 0; j -= 4) {
+        u8 n = (v >> j) & 0xF;
+        putcar(n < 10 ? '0' + n : 'A' + n - 10);
+    }
+}
+
 /* ── Lectura de bloques ─────────────────────────────────────────────────── */
 
 static void ext2_read_block(u32 block, u8 *buf)
@@ -167,17 +177,31 @@ u32 ext2_read_file(u32 inum, u8 *buf, u32 max_size)
 
     ext2_read_inode(inum, &inode);
 
+    /* DIAGNÓSTICO: ver qué tiene el inodo */
+    print("  [EXT2] i_size="); phex32(inode.i_size);
+    print(" blk[0]="); phex32(inode.i_block[0]);
+    print(" blk[1]="); phex32(inode.i_block[1]);
+    print(" blk[2]="); phex32(inode.i_block[2]);
+    print(" blk[3]="); phex32(inode.i_block[3]);
+    print(" blk[4]="); phex32(inode.i_block[4]);
+    putcar('\n');
+
     size   = (inode.i_size < max_size) ? inode.i_size : max_size;
     copied = 0;
 
     for (blk = 0; blk < 12 && copied < size; blk++) {
-        if (inode.i_block[blk] == 0) break;
-        ext2_read_block(inode.i_block[blk], blk_a);
         bytes = block_size;
         if (copied + bytes > size)
             bytes = size - copied;
-        for (j = 0; j < bytes; j++)
-            buf[copied + j] = blk_a[j];
+        if (inode.i_block[blk] == 0) {
+            /* bloque sparse: el archivo tiene un hueco, rellenar con ceros */
+            for (j = 0; j < bytes; j++)
+                buf[copied + j] = 0;
+        } else {
+            ext2_read_block(inode.i_block[blk], blk_a);
+            for (j = 0; j < bytes; j++)
+                buf[copied + j] = blk_a[j];
+        }
         copied += bytes;
     }
 

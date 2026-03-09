@@ -1,6 +1,6 @@
 CC      ?= gcc
 BUILD   ?= ../build
-INCLUDES ?= -I../lib -I../kernel -I../arch -I../mm -I../drivers -I../process
+INCLUDES ?= -I../lib -I../kernel -I../arch -I../mm -I../drivers -I../process -I../fs
 CFLAGS  ?= -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall $(INCLUDES)
 
 OBJS = $(BUILD)/kernel.o

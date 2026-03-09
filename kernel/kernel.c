@@ -7,6 +7,7 @@
 #include "vmm.h"
 #include "ide.h"
 #include "ext2.h"
+#include "elf.h"
 #include "task.h"
 
 extern char kY;
@@ -76,7 +77,7 @@ int kmain(void)
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print("  PepinOS Paso 18 - Ext2 Filesystem\n");
+    print("  PepinOS Paso 19 - ELF Loader\n");
     kattr = 0x0F;
     print("================================\n\n");
 
@@ -118,6 +119,8 @@ int kmain(void)
 
     print("Iniciando multitarea:\n");
     launch_tasks();
+    elf_exec("hello.elf");
+    sched_enter();
 
     while(1);
     return 0;

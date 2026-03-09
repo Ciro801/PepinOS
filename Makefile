@@ -35,6 +35,7 @@ OBJS = \
 	$(BUILD)/pmm.o       \
 	$(BUILD)/vmm.o       \
 	$(BUILD)/ext2.o      \
+	$(BUILD)/elf.o       \
 	$(BUILD)/task.o      \
 	$(BUILD)/task_user.o \
 	$(BUILD)/scheduler.o \
@@ -64,11 +65,11 @@ _compile:
 
 # ── Targets ────────────────────────────────────────────────────────────────
 # Crear imagen de disco ext2 de 2MB con un archivo de prueba
-$(BUILD)/disk.img:
+$(BUILD)/disk.img: $(BUILD)/hello.elf
 	dd if=/dev/zero of=$(BUILD)/disk.img bs=1k count=2048 2>/dev/null
 	mkfs.ext2 -b 1024 $(BUILD)/disk.img 2>/dev/null
 	@printf "Hola desde PepinOS Ext2!\n" > /tmp/_pepinos_test.txt
-	@printf "write /tmp/_pepinos_test.txt hola.txt\n" | \
+	@printf "write /tmp/_pepinos_test.txt hola.txt\nwrite $(BUILD)/hello.elf hello.elf\n" | \
 	    debugfs -w $(BUILD)/disk.img 2>/dev/null || true
 	@rm -f /tmp/_pepinos_test.txt
 
@@ -90,4 +91,6 @@ clean:
 	rm -f $(BUILD)/*.o \
 	      $(BUILD)/multiboot.o \
 	      $(BUILD)/kernel.elf \
-	      $(BUILD)/disk.img
+	      $(BUILD)/disk.img \
+	      $(BUILD)/hello.elf \
+	      $(BUILD)/hello.o

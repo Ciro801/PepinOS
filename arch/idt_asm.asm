@@ -6,6 +6,7 @@ EXTERN idt_handler_pagefault
 EXTERN idt_handler_gpf
 EXTERN idt_handler_numbered
 EXTERN do_switch
+EXTERN dbg_irq0_iret
 EXTERN keyboard_handler
 EXTERN syscall_handler
 
@@ -100,9 +101,13 @@ _idt_div0:
     iret
 
 _idt_pagefault:
-    add  esp, 4             ; descartar error code
-    pusha
+    pop  eax                ; eax = error code
+    pusha                   ; salvar regs (8 × 4 = 32 bytes)
+    mov  ebx, [esp + 32]    ; EIP faulting = esp+32 (justo encima del frame pusha)
+    push ebx                ; 2do arg: faulting EIP
+    push eax                ; 1er arg: error code
     call idt_handler_pagefault
+    add  esp, 8
     popa
     iret
 
@@ -122,6 +127,12 @@ _idt_irq0:
     add  esp, 4
     mov  al, 0x20
     out  0x20, al         ; EOI al PIC
+    ; -- DIAGNÓSTICO: volcar frame iret antes de ejecutar iret --
+    lea  eax, [esp + 32]  ; apunta al frame iret (justo encima del frame pusha)
+    push eax
+    call dbg_irq0_iret    ; dbg_irq0_iret(u32 *frame)
+    add  esp, 4
+    ; -----------------------------------------------------------
     popa
     iret
 

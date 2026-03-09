@@ -49,9 +49,19 @@ void launch_tasks(void)
                    TASK_STACK_VIRT + 0xFF0, 0x33, TASK_B_PD_ADDR, TASK_B_KSTACK_TOP);
     print("  [OK] Scheduler: 2 tareas registradas\n");
 
-    print("\nMultitarea activa. Iniciando tarea A...\n\n");
+    print("  [OK] Tareas A y B registradas. Llamar sched_enter() para iniciar.\n");
+}
 
-    /* ── Cambiar al page directory de tarea A y saltar a ring 3 ── */
+/*
+ * sched_enter — Activa la multitarea saltando a ring 3 con iret.
+ *
+ * Debe llamarse DESPUES de registrar todas las tareas (launch_tasks + elf_exec).
+ * Carga el CR3 de la tarea A y hace iret hacia ring 3. A partir de aqui
+ * el scheduler IRQ0 conmutara entre todas las tareas registradas.
+ * Esta funcion nunca retorna.
+ */
+void sched_enter(void)
+{
     asm volatile("mov %0, %%cr3" : : "r"((u32)TASK_A_PD_ADDR));
 
     asm("  mov $0x33, %ax         \n"   /* SS usuario  */

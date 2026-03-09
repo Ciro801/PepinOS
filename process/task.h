@@ -17,6 +17,7 @@
 #define TASK_B_KSTACK_TOP 0x00323000   /* pila B: 0x322000-0x322FFF */
 
 void launch_tasks(void);
+void sched_enter(void);
 void user_task(void);
 void user_task_b(void);
 

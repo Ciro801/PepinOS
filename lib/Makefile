@@ -3,8 +3,7 @@ BUILD   ?= ../build
 INCLUDES ?= -I../lib
 CFLAGS  ?= -m32 -ffreestanding -fno-stack-protector -nostdlib -fno-pic -Wall $(INCLUDES)
 
-# string.o y list.o se añaden en pasos futuros
-OBJS =
+OBJS = $(BUILD)/string.o
 
 .PHONY: all clean
 

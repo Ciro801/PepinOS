@@ -24,6 +24,7 @@ export CC NASM CFLAGS BUILD
 OBJS = \
 	$(BUILD)/multiboot.o \
 	$(BUILD)/kernel.o    \
+	$(BUILD)/string.o    \
 	$(BUILD)/gdt.o       \
 	$(BUILD)/tss.o       \
 	$(BUILD)/idt.o       \

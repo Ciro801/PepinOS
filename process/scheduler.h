@@ -4,15 +4,9 @@
 #include "types.h"
 #include "list.h"   /* struct list_head, container_of, list_for_each_entry */
 #include "vfs.h"    /* fd_t, MAX_FD */
+#include "signal.h" /* NSIG, SIGINT, SIGUSR1, SIGUSR2, SIGTERM, sighandler_t */
 
 #define MAX_TASKS 8
-
-/* ── Señales ─────────────────────────────────────────────────────────────── */
-#define NSIG    32
-#define SIGINT   2   /* Ctrl+C                     */
-#define SIGTERM 15   /* Terminacion normal          */
-#define SIGUSR1 10   /* Señal de usuario 1          */
-#define SIGUSR2 12   /* Señal de usuario 2          */
 
 /*
  * Contexto guardado en la pila durante IRQ0 (pusha + iret frame de ring 3):

@@ -71,7 +71,7 @@ int kmain(void)
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print("  PepinOS Paso 20 - GRUB Boot\n");
+    print("  PepinOS Paso 23 - Shell Interactivo\n");
     kattr = 0x0F;
     print("================================\n\n");
 
@@ -117,7 +117,7 @@ int kmain(void)
 
     print("Iniciando multitarea:\n");
     launch_tasks();
-    elf_exec("hello.elf");
+    elf_exec("shell.elf");
     sched_enter();
 
     while(1);

@@ -3,6 +3,8 @@
 #include "syscall.h"
 #include "scheduler.h"
 #include "vfs.h"
+#include "keyboard.h"
+#include "ext2.h"
 
 /*
  * syscall_handler — despachador de syscalls
@@ -86,6 +88,16 @@ int syscall_handler(u32 eax, u32 ebx, u32 ecx, u32 edx)
         t->files[fd].offset += n;
         return (int) n;
     }
+
+    case SYS_GETCHAR:
+        /* Devuelve el siguiente carácter del ring buffer, o 0 si vacío */
+        return (int)(unsigned char) kb_getchar();
+
+    case SYS_LS:
+        /* Lista el directorio raíz en pantalla */
+        kattr = 0x0E;
+        ext2_ls(EXT2_ROOT_INODE);
+        return 0;
 
     default:
         return -1;

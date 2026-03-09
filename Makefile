@@ -79,7 +79,7 @@ GRUB_MODS  = biosdisk part_msdos ext2 normal multiboot
 PART_START = 2048    # primer sector de la partición (en sectores de 512 B)
 DISK_SECTS = 65536   # 32 MB total
 
-$(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/hello.elf
+$(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/hello.elf $(BUILD)/shell.elf
 	@echo "  [DISK] Creando disco particionado con GRUB..."
 
 	# 1. Imagen de partición ext2 (todo el espacio menos el gap de GRUB)
@@ -87,7 +87,7 @@ $(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/hello.elf
 	    count=$$(( $(DISK_SECTS) - $(PART_START) )) 2>/dev/null
 	mke2fs -b 1024 -t ext2 -F $(BUILD)/part.img 2>/dev/null
 	@printf "Hola desde PepinOS Ext2!\n" > /tmp/_pepinos_hola.txt
-	printf "mkdir boot\nmkdir boot/grub\nwrite arch/grub.cfg boot/grub/grub.cfg\nwrite $(BUILD)/kernel.elf boot/kernel.elf\nwrite $(BUILD)/hello.elf hello.elf\nwrite /tmp/_pepinos_hola.txt hola.txt\n" | \
+	printf "mkdir boot\nmkdir boot/grub\nwrite arch/grub.cfg boot/grub/grub.cfg\nwrite $(BUILD)/kernel.elf boot/kernel.elf\nwrite $(BUILD)/hello.elf hello.elf\nwrite $(BUILD)/shell.elf shell.elf\nwrite /tmp/_pepinos_hola.txt hola.txt\n" | \
 	    debugfs -w $(BUILD)/part.img 2>/dev/null || true
 	@rm -f /tmp/_pepinos_hola.txt
 
@@ -136,4 +136,6 @@ clean:
 	      $(BUILD)/grub_core.img \
 	      $(BUILD)/grub_boot.img \
 	      $(BUILD)/hello.elf \
-	      $(BUILD)/hello.o
+	      $(BUILD)/hello.o \
+	      $(BUILD)/shell.elf \
+	      $(BUILD)/shell.o

@@ -11,5 +11,6 @@ extern char kY;
 
 void init_keyboard(void);
 void keyboard_handler(void);
+char kb_getchar(void);   /* siguiente carácter del ring buffer (0 = vacío) */
 
 #endif

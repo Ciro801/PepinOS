@@ -52,7 +52,7 @@ Basado exactamente en el índice del tutorial de michelizza, dividido en **5 fas
 | Paso | Capítulo | Qué construyes | Estado |
 |------|----------|----------------|--------|
 | 19 | Cargar y ejecutar binarios **ELF** desde el filesystem | ✅ Completado |
-| 20 | XXI | Boot con GRUB en disco IDE particionado |
+| 20 | XXI | Boot con GRUB en disco IDE particionado | ✅ Completado |
 | 21 | XXII | Estructuras para gestión de **archivos** |
 | 22 | XXIII | Listas enlazadas genéricas (como Linux/FreeBSD) |
 | 23 | XXIV | Primer **shell** interactivo |

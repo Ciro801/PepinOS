@@ -13,46 +13,37 @@
 extern char kY;
 extern char kattr;
 
-/* Imprime un byte como dos digitos hexadecimales */
-static void print_byte_hex(u8 b)
+/*
+ * mbr_find_partition — lee el MBR y devuelve el LBA de inicio
+ * de la primera partición válida (tipo 0x83 = Linux ext2).
+ * Si no hay tabla de particiones (sin firma 0x55AA), devuelve 0
+ * para mantener compatibilidad con el disco plano de desarrollo.
+ */
+static u32 mbr_find_partition(void)
 {
-    char hex[] = "0123456789ABCDEF";
-    char s[3];
-    s[0] = hex[(b >> 4) & 0xF];
-    s[1] = hex[b & 0xF];
-    s[2] = '\0';
-    print(s);
-}
-
-static void test_ide(void)
-{
-    u8 buf[512];
+    u8 mbr[512];
+    u8 *entry;
+    u32 lba;
     int i;
 
-    /* Escribir firma de prueba en el sector 0 del disco */
-    for (i = 0; i < 512; i++) buf[i] = 0;
-    buf[0] = 0xDE;
-    buf[1] = 0xAD;
-    buf[2] = 0xBE;
-    buf[3] = 0xEF;
-    ide_write_sector(0, buf);
+    ide_read_sector(0, mbr);
 
-    /* Leer de vuelta y verificar */
-    for (i = 0; i < 512; i++) buf[i] = 0;
-    ide_read_sector(0, buf);
+    /* Sin firma de MBR válida → disco plano (sin particiones) */
+    if (mbr[510] != 0x55 || mbr[511] != 0xAA)
+        return 0;
 
-    print("  [IDE] Sector 0 bytes [0-3]: ");
-    print_byte_hex(buf[0]); print(" ");
-    print_byte_hex(buf[1]); print(" ");
-    print_byte_hex(buf[2]); print(" ");
-    print_byte_hex(buf[3]); print("\n");
-
-    if (buf[0] == 0xDE && buf[1] == 0xAD &&
-        buf[2] == 0xBE && buf[3] == 0xEF) {
-        print("  [OK] IDE: escritura y lectura correctas\n");
-    } else {
-        print("  [!!] IDE: fallo en verificacion\n");
+    /* Tabla de particiones: 4 entradas × 16 bytes desde offset 0x1BE */
+    for (i = 0; i < 4; i++) {
+        entry = mbr + 0x1BE + i * 16;
+        if (entry[4] == 0x83) {           /* tipo Linux ext2/3/4 */
+            lba = (u32)entry[8]        |
+                  (u32)entry[9]  << 8  |
+                  (u32)entry[10] << 16 |
+                  (u32)entry[11] << 24;
+            return lba;
+        }
     }
+    return 0;
 }
 
 int kmain(void);
@@ -74,10 +65,12 @@ void _start(void)
 
 int kmain(void)
 {
+    u32 part_lba;
+
     kattr = 0x0F;
     print("================================\n");
     kattr = 0x0B;
-    print("  PepinOS Paso 19 - ELF Loader\n");
+    print("  PepinOS Paso 20 - GRUB Boot\n");
     kattr = 0x0F;
     print("================================\n\n");
 
@@ -100,9 +93,11 @@ int kmain(void)
     vmm_init();
     print("  [OK] VMM: listo\n");
 
-    test_ide();
-
+    /* Leer la tabla de particiones del MBR para localizar el FS ext2 */
+    part_lba = mbr_find_partition();
+    ext2_set_partition(part_lba);
     ext2_init();
+
     print("  [Ext2] Directorio raiz:\n");
     ext2_ls(EXT2_ROOT_INODE);
     {

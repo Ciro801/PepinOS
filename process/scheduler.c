@@ -2,31 +2,6 @@
 #include "tss.h"
 #include "screen.h"
 
-static void phex(u32 v)
-{
-    int j;
-    for (j = 28; j >= 0; j -= 4) {
-        u8 n = (v >> j) & 0xF;
-        putcar(n < 10 ? '0' + n : 'A' + n - 10);
-    }
-}
-
-static u32 dbg_switches = 0;
-static u32 dbg_iret_count = 0;
-
-/* Vuelca el frame iret sobre la pila kernel justo antes de que iret lo consuma */
-void dbg_irq0_iret(u32 *frame)
-{
-    if (dbg_iret_count++ < 5) {
-        print("[iret] eip="); phex(frame[0]);
-        print(" cs=");        phex(frame[1]);
-        print(" fl=");        phex(frame[2]);
-        print(" esp=");       phex(frame[3]);
-        print(" ss=");        phex(frame[4]);
-        putcar('\n');
-    }
-}
-
 static task_t tasks[MAX_TASKS];
 int ntasks = 0;
 static int current = 0;
@@ -80,15 +55,6 @@ void do_switch(u32 *ctx)
     /* siguiente tarea (round-robin) */
     current = (current + 1) % ntasks;
     next = &tasks[current];
-
-    /* traza (solo primeros 20 cambios) */
-    if (dbg_switches < 20) {
-        dbg_switches++;
-        print("[sw->"); phex(current);
-        print(" eip="); phex(next->regs[8]);
-        print(" esp="); phex(next->regs[11]);
-        print("]\n");
-    }
 
     /* restaurar contexto siguiente */
     for (i = 0; i < 13; i++)

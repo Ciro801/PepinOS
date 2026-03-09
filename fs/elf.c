@@ -149,22 +149,6 @@ void elf_exec(const char *name)
             proc_map_page(pd_phys, vaddr, frame,
                           PG_PRESENT | PG_WRITE | PG_USER);
 
-            /* DIAGNÓSTICO: volcar bytes de la página de código en el entry point */
-            if (vaddr == (hdr->e_entry & ~0xFFFu)) {
-                u32 off = hdr->e_entry & 0xFFF;
-                u32 _k;
-                print("  [DBG] bytes@entry("); {
-                    int _j; u32 _v=off;
-                    for (_j=28;_j>=0;_j-=4){u8 _n=(_v>>_j)&0xF;putcar(_n<10?'0'+_n:'A'+_n-10);}
-                } print("):");
-                for (_k = off; _k < off + 8; _k++) {
-                    u8 _b = fp[_k];
-                    putcar(' ');
-                    putcar(_b>>4  < 10 ? '0'+(_b>>4)   : 'A'+(_b>>4)-10);
-                    putcar((_b&0xF)< 10 ? '0'+(_b&0xF) : 'A'+(_b&0xF)-10);
-                }
-                putcar('\n');
-            }
         }
     }
 
@@ -180,22 +164,6 @@ void elf_exec(const char *name)
 
     /* ── 6. Pila kernel para la tarea (ring 0) ── */
     kstack_phys = pmm_alloc_page();
-
-    /* ── diagnóstico: verificar PD/PT del proceso ── */
-    {
-        u32 *pd = (u32 *) pd_phys;
-        u32  pd256 = pd[256];
-        u32 *pt = (u32 *)(pd256 & ~0xFFFu);
-        print("  [DBG] pd[256]=0x"); {
-            int _j; for (_j=28;_j>=0;_j-=4){u8 _n=(pd256>>_j)&0xF;putcar(_n<10?'0'+_n:'A'+_n-10);}
-        } print(" pt[0]=0x"); {
-            u32 _v=pt[0]; int _j; for (_j=28;_j>=0;_j-=4){u8 _n=(_v>>_j)&0xF;putcar(_n<10?'0'+_n:'A'+_n-10);}
-        } print(" pt[1]=0x"); {
-            u32 _v=pt[1]; int _j; for (_j=28;_j>=0;_j-=4){u8 _n=(_v>>_j)&0xF;putcar(_n<10?'0'+_n:'A'+_n-10);}
-        } print(" pt[256]=0x"); {
-            u32 _v=pt[256]; int _j; for (_j=28;_j>=0;_j-=4){u8 _n=(_v>>_j)&0xF;putcar(_n<10?'0'+_n:'A'+_n-10);}
-        } putcar('\n');
-    }
 
     /* ── 7. Registrar en el scheduler ── */
     /*

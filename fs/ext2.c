@@ -11,26 +11,25 @@ static u32         block_size;          /* bytes por bloque (tipicamente 1024) *
 static u32         inode_size;          /* bytes por inodo  (tipicamente 128)  */
 static u32         inodes_per_group;
 static ext2_bgd_t  bgd;                 /* primer Block Group Descriptor */
+static u32         part_lba = 0;        /* LBA de inicio de la partición ext2  */
 
 static u8 blk_a[4096];  /* buffer de bloques — uso general  */
 static u8 blk_b[4096];  /* buffer de bloques — directorio   */
 
-/* ── Helper diagnóstico ─────────────────────────────────────────────────── */
-
-static void phex32(u32 v) {
-    int j;
-    for (j = 28; j >= 0; j -= 4) {
-        u8 n = (v >> j) & 0xF;
-        putcar(n < 10 ? '0' + n : 'A' + n - 10);
-    }
-}
-
 /* ── Lectura de bloques ─────────────────────────────────────────────────── */
+
+/* ext2_set_partition — registra el LBA de inicio de la partición ext2.
+ * Llamar antes de ext2_init() cuando el filesystem no empieza en el sector 0
+ * (p.ej. cuando hay una tabla de particiones MBR con GRUB). */
+void ext2_set_partition(u32 lba_start)
+{
+    part_lba = lba_start;
+}
 
 static void ext2_read_block(u32 block, u8 *buf)
 {
     u32 sects = block_size / 512;
-    u32 lba   = block * sects;
+    u32 lba   = part_lba + block * sects;
     u32 i;
     for (i = 0; i < sects; i++)
         ide_read_sector(lba + i, buf + i * 512);
@@ -59,7 +58,7 @@ void ext2_init(void)
     u32 i;
     u8 *bgd_raw;
 
-    ide_read_sector(2, sb);   /* superblock empieza en el byte 1024 = sector 2 */
+    ide_read_sector(part_lba + 2, sb); /* superblock: byte 1024 del FS = sector 2 relativo */
 
     magic      = *(u16*)(sb + 56);
     log_bsz    = *(u32*)(sb + 24);
@@ -176,15 +175,6 @@ u32 ext2_read_file(u32 inum, u8 *buf, u32 max_size)
     u32 size, copied, blk, bytes, j;
 
     ext2_read_inode(inum, &inode);
-
-    /* DIAGNÓSTICO: ver qué tiene el inodo */
-    print("  [EXT2] i_size="); phex32(inode.i_size);
-    print(" blk[0]="); phex32(inode.i_block[0]);
-    print(" blk[1]="); phex32(inode.i_block[1]);
-    print(" blk[2]="); phex32(inode.i_block[2]);
-    print(" blk[3]="); phex32(inode.i_block[3]);
-    print(" blk[4]="); phex32(inode.i_block[4]);
-    putcar('\n');
 
     size   = (inode.i_size < max_size) ? inode.i_size : max_size;
     copied = 0;

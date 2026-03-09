@@ -64,26 +64,65 @@ _compile:
 	$(MAKE) -C user    BUILD=$(CURDIR)/$(BUILD)
 
 # ── Targets ────────────────────────────────────────────────────────────────
-# Crear imagen de disco ext2 de 2MB con un archivo de prueba
-$(BUILD)/disk.img: $(BUILD)/hello.elf
-	dd if=/dev/zero of=$(BUILD)/disk.img bs=1k count=2048 2>/dev/null
-	mkfs.ext2 -b 1024 $(BUILD)/disk.img 2>/dev/null
-	@printf "Hola desde PepinOS Ext2!\n" > /tmp/_pepinos_test.txt
-	@printf "write /tmp/_pepinos_test.txt hola.txt\nwrite $(BUILD)/hello.elf hello.elf\n" | \
-	    debugfs -w $(BUILD)/disk.img 2>/dev/null || true
-	@rm -f /tmp/_pepinos_test.txt
+# ── Disco particionado con GRUB ─────────────────────────────────────────────
+#
+# Estructura del disco (32 MB):
+#   Sector 0         : MBR con GRUB boot.img
+#   Sectores 1-2047  : GRUB core.img embebido (gap pre-partición)
+#   Sector 2048+     : Partición 1 ext2 (kernel.elf + hello.elf + hola.txt)
+#
+# Herramientas necesarias: grub-mkimage, mtools (mformat, mcopy), fdisk/sfdisk
+#
+GRUB_LIB   = /usr/lib/grub/i386-pc
+GRUB_MODS  = biosdisk part_msdos ext2 normal multiboot
+PART_START = 2048    # primer sector de la partición (en sectores de 512 B)
+DISK_SECTS = 65536   # 32 MB total
 
-# QEMU implementa Multiboot nativamente con -kernel: no se necesita GRUB real
+$(BUILD)/disk.img: $(BUILD)/kernel.elf $(BUILD)/hello.elf
+	@echo "  [DISK] Creando disco particionado con GRUB..."
+
+	# 1. Imagen de partición ext2 (todo el espacio menos el gap de GRUB)
+	dd if=/dev/zero of=$(BUILD)/part.img bs=512 \
+	    count=$$(( $(DISK_SECTS) - $(PART_START) )) 2>/dev/null
+	mke2fs -b 1024 -t ext2 -F $(BUILD)/part.img 2>/dev/null
+	@printf "Hola desde PepinOS Ext2!\n" > /tmp/_pepinos_hola.txt
+	printf "mkdir boot\nmkdir boot/grub\nwrite arch/grub.cfg boot/grub/grub.cfg\nwrite $(BUILD)/kernel.elf boot/kernel.elf\nwrite $(BUILD)/hello.elf hello.elf\nwrite /tmp/_pepinos_hola.txt hola.txt\n" | \
+	    debugfs -w $(BUILD)/part.img 2>/dev/null || true
+	@rm -f /tmp/_pepinos_hola.txt
+
+	# 2. Disco vacío de 32 MB con tabla de particiones MBR
+	dd if=/dev/zero of=$@ bs=512 count=$(DISK_SECTS) 2>/dev/null
+	printf "$(PART_START),$$(( $(DISK_SECTS) - $(PART_START) )),83,*\n" | \
+	    sfdisk --no-reread $@ 2>/dev/null
+
+	# 3. Incrustar la partición en el disco al offset correcto
+	dd if=$(BUILD)/part.img of=$@ bs=512 seek=$(PART_START) conv=notrunc 2>/dev/null
+
+	# 4. Construir GRUB core.img con los módulos necesarios
+	grub-mkimage -O i386-pc -o $(BUILD)/grub_core.img \
+	    -p '(hd0,msdos1)/boot/grub' \
+	    $(GRUB_MODS) 2>/dev/null
+
+	# 5. Incrustar GRUB: boot.img en MBR + core.img en sectores 1..N
+	cp $(GRUB_LIB)/boot.img $(BUILD)/grub_boot.img
+	# Parchar boot.img: dirección LBA del core.img = sector 1
+	printf '\x01\x00\x00\x00' | dd of=$(BUILD)/grub_boot.img \
+	    bs=1 seek=92 conv=notrunc 2>/dev/null
+	# Solo 446 bytes de boot code — preserva la tabla de particiones de sfdisk
+	dd if=$(BUILD)/grub_boot.img of=$@ bs=1 count=446 conv=notrunc 2>/dev/null
+	dd if=$(BUILD)/grub_core.img of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
+
+	@echo "  [DISK] Listo: $@"
+
+# Arranque real desde GRUB (sin -kernel)
 run: all $(BUILD)/disk.img
 	qemu-system-i386 \
-	    -kernel $(BUILD)/kernel.elf \
 	    -drive file=$(BUILD)/disk.img,format=raw,if=ide \
 	    -k es
 
 # -d int muestra todas las interrupciones en la consola de QEMU
 debug: all $(BUILD)/disk.img
 	qemu-system-i386 \
-	    -kernel $(BUILD)/kernel.elf \
 	    -drive file=$(BUILD)/disk.img,format=raw,if=ide \
 	    -k es -d int 2>&1 | head -200
 
@@ -92,5 +131,8 @@ clean:
 	      $(BUILD)/multiboot.o \
 	      $(BUILD)/kernel.elf \
 	      $(BUILD)/disk.img \
+	      $(BUILD)/part.img \
+	      $(BUILD)/grub_core.img \
+	      $(BUILD)/grub_boot.img \
 	      $(BUILD)/hello.elf \
 	      $(BUILD)/hello.o

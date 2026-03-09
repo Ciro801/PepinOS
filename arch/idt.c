@@ -146,9 +146,6 @@ void init_idt(void)
     /* Syscall — Trap Gate DPL=3 (mantiene IF=1, timer puede interrumpir) */
     init_idt_desc(0x08, (u32)_idt_syscall, 0xEF00, &kidt[0x30]);
 
-    kattr = 0x0C;
-    print("\n[DEBUG] Cargando IDT en 0x200...\n");
-
     /* Cargar IDTR */
     kidtr.limite = IDTSIZE * sizeof(struct idtdesc);
     kidtr.base   = IDTBASE;

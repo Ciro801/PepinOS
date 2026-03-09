@@ -18,6 +18,8 @@ static void sys_setcolor(unsigned char attr)
 
 void _start(void)
 {
-    /* TEST MINIMO: sin syscalls. Si fault persiste → bug en scheduler */
-    while (1);
+    sys_setcolor(0x0A);   /* verde brillante */
+    while (1) {
+        sys_print("hola desde PepinOS!\n");
+    }
 }

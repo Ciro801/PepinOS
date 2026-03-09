@@ -62,6 +62,7 @@ typedef struct {
     /* name[name_len] sigue inmediatamente — NO null-terminated          */
 } __attribute__((packed)) ext2_dirent_t;
 
+void ext2_set_partition(u32 lba_start);
 void ext2_init(void);
 void ext2_ls(u32 dir_ino);
 u32  ext2_find(u32 dir_ino, const char *name);

@@ -1,6 +1,7 @@
 #include "types.h"
 #include "screen.h"
 #include "keyboard.h"
+#include "scheduler.h"   /* sched_signal */
 
 /* ── Ring buffer de teclado ─────────────────────────────────────────────── */
 #define KB_BUF_SIZE 64
@@ -34,6 +35,10 @@ static char kbmap[] = {
 
 #define KBMAP_SIZE (sizeof(kbmap) / sizeof(kbmap[0]))
 
+/* Scancodes especiales */
+#define SC_CTRL_PRESS   0x1D
+#define SC_CTRL_RELEASE 0x9D
+
 static u8 inb(u16 port)
 {
     u8 val;
@@ -43,22 +48,36 @@ static u8 inb(u16 port)
 
 void keyboard_handler(void)
 {
+    static int ctrl_held = 0;
     u8   scancode = inb(KEYBOARD_PORT);
     char c;
+    int  next;
 
-    if (scancode & 0x80)
-        return;
+    /* Tecla Ctrl (izquierda) */
+    if (scancode == SC_CTRL_PRESS)  { ctrl_held = 1; return; }
+    if (scancode == SC_CTRL_RELEASE){ ctrl_held = 0; return; }
 
-    if (scancode >= KBMAP_SIZE)
-        return;
+    /* Tecla liberada (bit 7 encendido) — ignorar */
+    if (scancode & 0x80) return;
+
+    if (scancode >= KBMAP_SIZE) return;
 
     c = kbmap[scancode];
-    if (c == 0)
+    if (c == 0) return;
+
+    /* Ctrl+C → SIGINT al proceso actual */
+    if (ctrl_held && c == 'c') {
+        kattr = 0x0C;
+        putcar('^');
+        putcar('C');
+        putcar('\n');
+        sched_signal(SIGINT);
         return;
+    }
 
     /* Encolar en el ring buffer para sys_getchar */
-    int next = (kb_head + 1) % KB_BUF_SIZE;
-    if (next != kb_tail) {          /* no sobreescribir si lleno */
+    next = (kb_head + 1) % KB_BUF_SIZE;
+    if (next != kb_tail) {
         kb_buf[kb_head] = c;
         kb_head = next;
     }

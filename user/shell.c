@@ -1,7 +1,7 @@
 /*
- * shell.c — Primer shell interactivo de PepinOS.
+ * shell.c — Shell interactivo de PepinOS con soporte de señales POSIX.
  *
- * Syscalls disponibles (via INT 0x30):
+ * Syscalls (via INT 0x30):
  *   0  SYS_PRINT    ebx=string
  *   1  SYS_EXIT
  *   2  SYS_SETCOLOR ebx=attr
@@ -10,7 +10,15 @@
  *   5  SYS_READ     ebx=fd, ecx=buf, edx=count -> eax=bytes
  *   6  SYS_GETCHAR  -> eax=char (0 si vacio)
  *   7  SYS_LS       lista directorio raiz
+ *   8  SYS_SIGACTION ebx=signum, ecx=handler_addr
+ *   9  SYS_KILL     ebx=signum -> senal al proceso actual
+ *  10  SYS_SIGRETURN -> restaura contexto pre-senal
  */
+
+#define SIGINT   2
+#define SIGTERM 15
+#define SIGUSR1 10
+#define SIGUSR2 12
 
 /* -- Syscall wrappers ---------------------------------------------------- */
 
@@ -55,6 +63,23 @@ static void sys_ls(void)
     asm volatile("int $0x30" : : "a"(7));
 }
 
+static void sys_sigaction(int sig, void *handler)
+{
+    asm volatile("int $0x30" : : "a"(8), "b"(sig), "c"((unsigned int)handler));
+}
+
+static void sys_kill(int sig)
+{
+    asm volatile("int $0x30" : : "a"(9), "b"(sig));
+}
+
+/* sys_sigreturn: restaura el contexto antes de la senal.
+ * El kernel modifica el iret frame; no retorna al codigo del handler. */
+static void sys_sigreturn(void)
+{
+    asm volatile("int $0x30" : : "a"(10));
+}
+
 /* -- Utilidades de string ------------------------------------------------- */
 
 static int str_eq(const char *a, const char *b)
@@ -78,6 +103,46 @@ static const char *str_skip_word(const char *s)
     return s;
 }
 
+/* Convierte string decimal en entero (solo dígitos, sin signo) */
+static int str_atoi(const char *s)
+{
+    int n = 0;
+    while (*s >= '0' && *s <= '9') { n = n * 10 + (*s - '0'); s++; }
+    return n;
+}
+
+/* -- Manejadores de señal ------------------------------------------------- */
+
+/*
+ * Los manejadores deben terminar con sys_sigreturn().
+ * NO usar 'return' — el kernel redirige el EIP al llamar sigreturn.
+ */
+
+static void sigint_handler(int sig)
+{
+    (void)sig;
+    sys_setcolor(0x0C);
+    sys_print("\n[SIGINT] Ctrl+C recibido. Escribe 'help' para ver comandos.\n");
+    sys_sigreturn();
+}
+
+static void sigusr1_handler(int sig)
+{
+    (void)sig;
+    sys_setcolor(0x0E);
+    sys_print("[SIGUSR1] Senal de usuario 1 recibida.\n");
+    sys_sigreturn();
+}
+
+static void sigterm_handler(int sig)
+{
+    (void)sig;
+    sys_setcolor(0x0C);
+    sys_print("[SIGTERM] Terminando...\n");
+    /* En un OS real aqui se llamaria exit. Por ahora colgamos el proceso. */
+    while (1) { sys_getchar(); }
+}
+
 /* -- Comandos ------------------------------------------------------------- */
 
 static void cmd_help(void)
@@ -90,6 +155,11 @@ static void cmd_help(void)
     sys_print("  cat <archivo> - muestra el contenido de un archivo\n");
     sys_print("  echo <texto>  - imprime texto\n");
     sys_print("  clear         - limpia la pantalla\n");
+    sys_print("  raise <N>     - envia la senal N al proceso actual\n");
+    sys_print("\nSenales instaladas:\n");
+    sys_print("  SIGINT  (2)   - Ctrl+C\n");
+    sys_print("  SIGUSR1 (10)  - raise 10\n");
+    sys_print("  SIGTERM (15)  - raise 15\n");
 }
 
 static void cmd_cat(const char *filename)
@@ -133,9 +203,30 @@ static void cmd_clear(void)
 {
     int i;
     sys_setcolor(0x00);
-    for (i = 0; i < 25; i++)
-        sys_print("\n");
+    for (i = 0; i < 25; i++) sys_print("\n");
     sys_setcolor(0x0F);
+}
+
+static void cmd_raise(const char *arg)
+{
+    int sig;
+    if (!*arg) {
+        sys_setcolor(0x0C);
+        sys_print("uso: raise <numero_senal>\n");
+        return;
+    }
+    sig = str_atoi(arg);
+    if (sig <= 0) {
+        sys_setcolor(0x0C);
+        sys_print("raise: numero de senal invalido\n");
+        return;
+    }
+    sys_setcolor(0x07);
+    sys_print("Enviando senal ");
+    sys_print(arg);
+    sys_print("...\n");
+    sys_kill(sig);
+    /* La senal se entregara en el proximo timer tick */
 }
 
 /* -- Dispatch ------------------------------------------------------------- */
@@ -156,6 +247,10 @@ static void execute(const char *line)
         sys_print("\n");
     } else if (str_eq(line, "clear")) {
         cmd_clear();
+    } else if (str_starts(line, "raise ")) {
+        cmd_raise(str_skip_word(line));
+    } else if (str_eq(line, "raise")) {
+        cmd_raise("");
     } else if (*line == '\0') {
         /* linea vacia */
     } else {
@@ -173,11 +268,17 @@ void _start(void)
     static char line[128];
     int pos, c;
 
+    /* Instalar manejadores de senal */
+    sys_sigaction(SIGINT,  sigint_handler);
+    sys_sigaction(SIGUSR1, sigusr1_handler);
+    sys_sigaction(SIGTERM, sigterm_handler);
+
     /* Banner de bienvenida */
     sys_setcolor(0x0B);
-    sys_print("\n  PepinOS Shell  (paso 23)\n");
+    sys_print("\n  PepinOS Shell  (paso 24 - senales POSIX)\n");
     sys_setcolor(0x07);
-    sys_print("  Escribe 'help' para ver los comandos.\n\n");
+    sys_print("  help: comandos disponibles\n");
+    sys_print("  Ctrl+C envia SIGINT | 'raise N' envia la senal N\n\n");
 
     while (1) {
         /* Prompt */
@@ -189,17 +290,14 @@ void _start(void)
 
         /* Leer linea caracter a caracter */
         while (1) {
-            /* Spin hasta tener un caracter */
             do { c = sys_getchar(); } while (c == 0);
 
             if (c == '\n' || c == '\r') {
-                /* El eco del Enter ya lo hizo el kernel */
                 line[pos] = '\0';
                 break;
             } else if (c == '\b' || c == 127) {
                 if (pos > 0) {
                     pos--;
-                    /* Borrar el caracter de pantalla: mover atras, espacio, volver */
                     sys_print("\b \b");
                 }
             } else if (pos < (int)(sizeof(line) - 1)) {

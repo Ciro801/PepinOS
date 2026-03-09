@@ -137,11 +137,30 @@ _idt_irq1:
     popa
     iret
 
+; _idt_syscall — entrada de INT 0x30 (syscalls de usuario)
+;
+; Empujamos los 4 registros de argumento y además un puntero al bloque
+; resultante en la pila, para que SYS_SIGRETURN pueda modificar el iret
+; frame directamente.
+;
+; Pila justo antes de 'call' (direcciones bajas arriba):
+;   [esp+0]  = frame ptr (→ eax push)  ← 1er arg cdecl
+;   [esp+4]  = eax                      ← 2do arg
+;   [esp+8]  = ebx                      ← 3er arg
+;   [esp+12] = ecx                      ← 4to arg
+;   [esp+16] = edx                      ← 5to arg
+;   [esp+20] = EIP (iret frame CPU)     frame[4]
+;   [esp+24] = CS                       frame[5]
+;   [esp+28] = EFLAGS                   frame[6]
+;   [esp+32] = ESP_user                 frame[7]
+;   [esp+36] = SS                       frame[8]
+;
 _idt_syscall:
-    push edx
+    push edx              ; guardar argumentos del usuario
     push ecx
     push ebx
     push eax
-    call syscall_handler
-    add  esp, 16
+    push esp              ; frame ptr = dirección del bloque {eax,ebx,ecx,edx,EIP,...}
+    call syscall_handler  ; syscall_handler(frame, eax, ebx, ecx, edx)
+    add  esp, 20          ; limpiar: 4 regs + 1 frame ptr
     iret

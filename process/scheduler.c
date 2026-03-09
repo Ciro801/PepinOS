@@ -18,6 +18,13 @@ task_t *sched_current_task(void)
     return cur_task;
 }
 
+/* Marca la señal 'signum' como pendiente en la tarea actualmente en ejecución */
+void sched_signal(int signum)
+{
+    if (!cur_task || signum <= 0 || signum >= NSIG) return;
+    cur_task->sig_pending |= (1u << signum);
+}
+
 void sched_add_task(u32 eip, u32 cs, u32 eflags,
                     u32 user_esp, u32 ss, u32 cr3, u32 kstack_top)
 {
@@ -40,6 +47,12 @@ void sched_add_task(u32 eip, u32 cs, u32 eflags,
         t->files[i].used   = 0;
     }
 
+    /* Inicializar señales */
+    t->sig_pending    = 0;
+    t->sig_in_handler = 0;
+    for (i = 0; i < NSIG; i++) t->sig_handlers[i] = 0;
+    for (i = 0; i < 13;   i++) t->sig_saved_regs[i] = 0;
+
     /* Enlazar al final de la lista circular (FIFO = round-robin correcto) */
     list_add_tail(&task_list, &t->list);
 
@@ -54,12 +67,15 @@ void sched_add_task(u32 eip, u32 cs, u32 eflags,
  * Si la interrupción llegó desde ring 0 (CS=0x08), no cambiar de tarea.
  * En ring 3: guarda el contexto actual, avanza al siguiente nodo de la
  * lista circular y restaura su contexto.
+ *
+ * Al final, si la tarea siguiente tiene señales pendientes y no está ya
+ * en un handler, inyecta la llamada al handler en su pila de usuario.
  */
 void do_switch(u32 *ctx)
 {
     struct list_head *next_node;
     task_t           *next;
-    u32 i;
+    u32               i, sig;
 
     if (!cur_task) return;
 
@@ -87,4 +103,38 @@ void do_switch(u32 *ctx)
 
     /* Actualizar TSS con la pila kernel de la siguiente tarea */
     ktss.esp0 = next->kstack_top;
+
+    /* ── Entrega de señales ─────────────────────────────────────────────────
+     * Condiciones para entregar:
+     *   - Hay señales pendientes
+     *   - No estamos ya dentro de un handler (sin reentrada)
+     *
+     * Mecanismo de inyección (x86 cdecl):
+     *   Construimos un call frame en la pila usuario antes del iret:
+     *     [ESP-4] = signum      (arg1 de la función handler)
+     *     [ESP-8] = 0           (dirección de retorno dummy)
+     *   Luego redirigimos EIP al handler y ajustamos ESP.
+     *   El handler DEBE terminar con sys_sigreturn(), no con return.
+     * ──────────────────────────────────────────────────────────────────────*/
+    if (next->sig_pending && !next->sig_in_handler) {
+        for (sig = 1; sig < NSIG; sig++) {
+            if (next->sig_pending & (1u << sig)) break;
+        }
+
+        if (sig < NSIG && next->sig_handlers[sig]) {
+            /* Guardar contexto completo para sigreturn */
+            for (i = 0; i < 13; i++)
+                next->sig_saved_regs[i] = ctx[i];
+
+            /* ctx[11] = ESP_user. Empujar call frame de usuario. */
+            ctx[11] -= 4;
+            *((u32 *) ctx[11]) = sig;   /* arg1: signum                 */
+            ctx[11] -= 4;
+            *((u32 *) ctx[11]) = 0;     /* ret addr dummy (no usar ret) */
+
+            ctx[8] = next->sig_handlers[sig];  /* EIP → handler         */
+            next->sig_in_handler = 1;
+            next->sig_pending &= ~(1u << sig);
+        }
+    }
 }
